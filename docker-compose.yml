@@ -1,0 +1,52 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: ddp
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin
+    volumes:
+      - ./data/db:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+        - skku-ddp-network
+  test-db:
+    image: mysql:8.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: test
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin
+    volumes:
+      - ./data/test-db:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    networks:
+        - skku-ddp-network
+  web:
+    build: .
+    volumes:
+      - ./ddp-api:/app/ddp-api # ddp-api 디렉토리만 마운트
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DJANGO_SETTINGS_MODULE=app.settings
+      - DB_HOST=db
+      - DB_NAME=ddp
+      - DB_USER=admin
+      - DB_PASSWORD=admin
+    networks:
+        - skku-ddp-network
+
+volumes:
+  db_data:
+
+networks:
+    skku-ddp-network:
+        driver: bridge
