@@ -12,6 +12,9 @@ def save_llm_log(question: str, ai_response: AIMessage, agent="default") -> None
         agent (str): LLM 호출 에이전트 이름
     """
     content = ai_response.content
+    if "```json" in content:
+        content = content.split("```json")[1].strip()
+        content = content.split("```")[0].strip()
     metadata = ai_response.response_metadata or {}
 
     token_usage = metadata.get("token_usage", {})

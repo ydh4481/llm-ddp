@@ -66,7 +66,7 @@ from llm.utils.logger import save_llm_log
 
 # Question:
 # {question}
-def build_query_generator_agent(model: str = "gpt-4o-mini", temperature: float = 0) -> Runnable:
+def build_query_generator_agent(model: str = "gpt-4o", temperature: float = 0) -> Runnable:
     """
     자연어 질문을 SQL 쿼리로 바꾸는 LangChain 에이전트를 생성합니다.
 
@@ -93,8 +93,11 @@ Use the given 'Meta Info' to create an appropriate query for 'Question'.
 5. Please format the query correctly before answering.
 6. Always respond with a valid JSON object in the following format
 7. All answers should be in Korean.
-8. Date conditions should be in YYYY-MM-DD format. And time conditions should be in YYYY-MM-DD HH:MM:SS format.
-9. If there is no specific date or time condition, please use the current date and time based on korea timezone (KST).
+8. Date(일자) conditions should be in YYYY-MM-DD format. And timestamp(일시) conditions should be in YYYY-MM-DD HH:MM:SS format.
+9. When the user requests time series data by date, it should be converted to a date type, and when requesting data by date, it should be converted to a date type.
+10. If there is no specific date or time condition, please use the current date and time based on korea timezone (KST).
+
+
 - Meta Info
 {meta_info}
 
@@ -107,7 +110,7 @@ Use the given 'Meta Info' to create an appropriate query for 'Question'.
 - Error Format
 {{
     "result": "ERROR",
-    "message": "A message explaining the error."
+    "message": "Explain why the question could not be answered with the current metadata.",
 }}
 
 - Question
@@ -142,9 +145,15 @@ def generate_sql_query(question: str, meta_info: str) -> dict:
     logging.info(f"[QueryGenerator] Prompt:\n{filled_prompt}")
     response = chain.invoke({"question": question, "meta_info": meta_info})
     try:
-        logging.info(f"[QueryGenerator] Result: {response.content}")
+        content = response.content
+
+        if "```json" in content:
+            content = content.split("```json")[1].strip()
+            content = content.split("```")[0].strip()
+
+        logging.info(f"[QueryGenerator] Result: {content}")
         log = save_llm_log(question=question, ai_response=response, agent="query_generator")
-        result = json.loads(response.text())
+        result = json.loads(content)  # Updated to use 'content' instead of 'response.text()'
         result["id"] = log.id
         return result
     except json.JSONDecodeError:

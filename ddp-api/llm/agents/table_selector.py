@@ -14,7 +14,7 @@ You are a SQL assistant.
 
 Given the user question and the list of available table names, select only the relevant tables that would be used to answer the question.
 Response MUST contain ONLY table ids.
-Respond ONLY with the JSON object. No explanation. Do NOT wrap the JSON in triple backticks (no ```json).
+Respond ONLY with the JSON object. No explanation. Do NOT wrap the JSON in triple backticks (NO json).
 
 - Question: {question}
 - Available Tables:
@@ -32,7 +32,12 @@ Respond in JSON format:
     response = chain.invoke({"question": question, "table_list": "\n".join(table_list)})
 
     save_llm_log(question=question, ai_response=response, agent="table_selector")
-    response_json = json.loads(response.content)
+    content = response.content
+    if "```json" in content:
+        content = content.split("```json")[1].strip()
+        content = content.split("```")[0].strip()
+
+    response_json = json.loads(content)
     logging.info(f"[TableSelector] Result: {response_json}")
 
     try:

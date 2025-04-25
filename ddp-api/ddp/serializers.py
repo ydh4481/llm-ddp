@@ -16,18 +16,18 @@ class TableSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """
-        database_id, schema_name, eng_name을 고유 키로 확인하여
+        database_id, schema_name, name을 고유 키로 확인하여
         중복된 데이터가 있으면 저장하지 않고 기존 객체를 반환합니다.
         """
         database = validated_data.get("database")
         schema_name = validated_data.get("schema_name")
-        eng_name = validated_data.get("eng_name")
+        name = validated_data.get("name")
 
         # 중복 데이터 확인
         table, created = Table.objects.get_or_create(
             database=database,
             schema_name=schema_name,
-            eng_name=eng_name,
+            name=name,
             defaults=validated_data,  # 중복이 없을 경우에만 저장
         )
 
@@ -35,23 +35,43 @@ class TableSerializer(serializers.ModelSerializer):
 
 
 class ColumnSerializer(serializers.ModelSerializer):
+    schema_name = serializers.CharField(source="table.schema_name", read_only=True)
+
     class Meta:
         model = Column
         fields = "__all__"
 
     def create(self, validated_data):
         """
-        table_id, eng_name을 고유 키로 확인하여
+        table_id, name을 고유 키로 확인하여
         중복된 데이터가 있으면 저장하지 않고 기존 객체를 반환합니다.
         """
         table = validated_data.get("table")
-        eng_name = validated_data.get("eng_name")
+        name = validated_data.get("name")
 
         # 중복 데이터 확인
         column, created = Column.objects.get_or_create(
             table=table,
-            eng_name=eng_name,
+            name=name,
             defaults=validated_data,  # 중복이 없을 경우에만 저장
         )
 
         return column
+
+
+class ColumnMetaSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Column
+        fields = [
+            "name",
+            "description",
+            "data_type",
+            "default_value",
+            "column_seq",
+            "is_nullable",
+            "is_primary_key",
+            "is_unique",
+            "is_foreign_key",
+            "foreign_key_table",
+            "foreign_key_column",
+        ]

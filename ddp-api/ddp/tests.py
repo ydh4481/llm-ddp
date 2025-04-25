@@ -9,8 +9,7 @@ from .models import Column, Database, Table
 class DatabaseModelTest(TestCase):
     def setUp(self):
         self.database = Database.objects.create(
-            eng_name="TestDB",
-            kor_name="테스트DB",
+            name="테스트DB",
             description="테스트용 데이터베이스",
             connection_info='{"host": "db", "user": "root", "passwd": "admin"}',
         )
@@ -19,8 +18,7 @@ class DatabaseModelTest(TestCase):
 
         client = APIClient()
         data = {
-            "eng_name": "APITestDB",
-            "kor_name": "API테스트DB",
+            "name": "API테스트DB",
             "description": "API 테스트용 데이터베이스",
             "connection_info": '{"host": "db", "user": "api_user", "passwd": "api_passwd"}',
         }
@@ -28,8 +26,8 @@ class DatabaseModelTest(TestCase):
         response = client.post("/api/db/", data, format="json")
         self.assertEqual(response.status_code, 201)
 
-        created_database = Database.objects.get(eng_name="APITestDB")
-        self.assertEqual(created_database.kor_name, "API테스트DB")
+        created_database = Database.objects.get(name="API테스트DB")
+        self.assertEqual(created_database.name, "API테스트DB")
         self.assertEqual(created_database.description, "API 테스트용 데이터베이스")
 
     def test_valid_connection(self):
@@ -42,8 +40,7 @@ class DatabaseModelTest(TestCase):
 class MySQLConnectorTest(TestCase):
     def setUp(self):
         self.database = Database.objects.create(
-            eng_name="test_ecommerce",
-            kor_name="ecommerce 테스트 DB",
+            name="ecommerce 테스트 DB",
             description="테스트용 데이터베이스",
             connection_info="{'host': 'test-db', 'db': 'test_ecommerce', 'user': 'root', 'passwd': 'admin'}",
         )

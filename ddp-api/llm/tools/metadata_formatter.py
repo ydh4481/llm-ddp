@@ -10,7 +10,7 @@ def format_metadata_for_prompt(columns: list[dict]) -> str:
             {
                 "table": "users",
                 "schema_name": "ecommerce",
-                "eng_name": "user_id",
+                "name": "user_id",
                 "data_type": "INT",
                 "description": "...",
                 "is_primary_key": True,
@@ -31,8 +31,8 @@ def format_metadata_for_prompt(columns: list[dict]) -> str:
         table = col.get("table")
         schema = table.schema_name or "default"
 
-        full_table_name = f"{schema}.{table.eng_name}"
-        col_name = col["eng_name"]
+        full_table_name = f"{schema}.{table.name}"
+        col_name = col["name"]
         dtype = col["data_type"]
         description = col.get("description", "")
 

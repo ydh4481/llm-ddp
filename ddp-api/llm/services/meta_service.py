@@ -36,7 +36,7 @@ def get_formatted_metadata(database_id: int) -> str:
         column_metadata.append(
             {
                 "table": col.table,
-                "eng_name": col.eng_name,
+                "name": col.name,
                 "data_type": col.data_type,
                 "description": col.description,
                 "is_primary_key": col.is_primary_key,
@@ -62,8 +62,7 @@ def get_table_list(database_id: int) -> list[dict]:
         list[dict]: [
             {
                 "id": int,
-                "eng_name": str,
-                "kor_name": str,
+                "name": str,
                 "description": str,
                 "created_at": datetime,
                 "updated_at": datetime
@@ -76,7 +75,7 @@ def get_table_list(database_id: int) -> list[dict]:
     except ObjectDoesNotExist:
         raise ValueError(f"Database(id={database_id}) not found.")
 
-    tables = Table.objects.filter(database=database).values("id", "eng_name", "description")
+    tables = Table.objects.filter(database=database).values("id", "name", "description")
     return list(tables)
 
 
@@ -102,14 +101,14 @@ def get_filtered_metadata_by_llm(database_id: int, question: str) -> str:
 
     table_list = []
     for table in all_tables:
-        table_list.append(f"[{table.id}] {table.eng_name}: ({table.description})")
+        table_list.append(f"[{table.id}] {table.name}: ({table.description})")
 
-    # 1️⃣ LLM이 관련 테이블 추출
+    # 질의와 관련된 테이블 추출
     relevant_table_ids = select_relevant_tables(question, table_list)
     if not relevant_table_ids:
         raise ValueError("No relevant tables found by LLM.")
 
-    # 2️⃣ 테이블 객체 + 컬럼 추출
+    # 테이블 객체 + 컬럼 추출
     relevant_tables = Table.objects.filter(database=database, id__in=relevant_table_ids)
     columns = Column.objects.filter(table__in=relevant_tables).select_related("table")
 
@@ -118,7 +117,7 @@ def get_filtered_metadata_by_llm(database_id: int, question: str) -> str:
         column_metadata.append(
             {
                 "table": col.table,
-                "eng_name": col.eng_name,
+                "name": col.name,
                 "data_type": col.data_type,
                 "description": col.description,
                 "is_primary_key": col.is_primary_key,

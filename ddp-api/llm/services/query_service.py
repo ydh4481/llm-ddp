@@ -49,9 +49,15 @@ def execute_query(database, summarize: bool = False, session_id=None) -> dict:
         columns = [desc[0] for desc in connector.cursor.description]
         elapsed_ms = round((time.perf_counter() - start) * 1000, 4)
 
-        summary = "데이터가 없습니다."
+        result = "데이터가 없습니다."
         if summarize and rows:
-            summary = summarize_query_result(question, columns, rows)
+            result = json.loads(summarize_query_result(question, columns, rows))
+            if isinstance(result, dict):
+                summary = result.get("summary", "")
+                chart = result.get("chart", {})
+            else:
+                summary = result
+                chart = {}
 
         # 로그 저장
         QueryExecutionLog.objects.create(
@@ -64,7 +70,15 @@ def execute_query(database, summarize: bool = False, session_id=None) -> dict:
 
         connector.close()
         # 결과 반환
-        return {"columns": columns, "rows": rows, "row_count": len(rows), "elapsed_ms": elapsed_ms, "summary": summary}
+        return {
+            "columns": columns,
+            "rows": rows,
+            "row_count": len(rows),
+            "elapsed_ms": elapsed_ms,
+            "summary": summary,
+            "chart": chart,
+        }
 
     except Exception as e:
+        logging.error(f"Error executing query: {str(e)}")
         return {"error": str(e), "status": "ERROR"}

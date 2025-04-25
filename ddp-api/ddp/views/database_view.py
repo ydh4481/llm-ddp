@@ -23,8 +23,7 @@ class DatabaseView(APIView):
                     "application/json": [
                         {
                             "id": 1,
-                            "eng_name": "TestDB",
-                            "kor_name": "테스트DB",
+                            "name": "테스트DB",
                             "description": "테스트용 데이터베이스",
                             "connection_info": "{...}",
                         }
@@ -44,13 +43,9 @@ class DatabaseView(APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                "eng_name": openapi.Schema(
+                "name": openapi.Schema(
                     type=openapi.TYPE_STRING,
-                    description="영문 데이터베이스 이름",
-                ),
-                "kor_name": openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    description="한글 데이터베이스 이름",
+                    description="데이터베이스 이름",
                 ),
                 "description": openapi.Schema(
                     type=openapi.TYPE_STRING,
@@ -61,7 +56,7 @@ class DatabaseView(APIView):
                     description="JSON 형식의 데이터베이스 접속 정보 (예: {'host': 'db', 'user': 'root', 'password': 'admin', 'database': 'test'})",
                 ),
             },
-            required=["eng_name", "kor_name", "connection_info"],
+            required=["name", "connection_info"],
         ),
         responses={
             201: openapi.Response(
@@ -69,8 +64,7 @@ class DatabaseView(APIView):
                 examples={
                     "application/json": {
                         "id": 1,
-                        "eng_name": "TestDB",
-                        "kor_name": "테스트DB",
+                        "name": "테스트DB",
                         "description": "테스트용 데이터베이스",
                         "connection_info": "{...}",
                     }
@@ -104,8 +98,7 @@ class DatabaseDetailView(APIView):
                 examples={
                     "application/json": {
                         "id": 1,
-                        "eng_name": "TestDB",
-                        "kor_name": "테스트DB",
+                        "name": "테스트DB",
                         "description": "테스트용 데이터베이스",
                         "connection_info": "{...}",
                     }
@@ -131,13 +124,9 @@ class DatabaseDetailView(APIView):
         request_body=openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
-                "eng_name": openapi.Schema(
+                "name": openapi.Schema(
                     type=openapi.TYPE_STRING,
-                    description="영문 데이터베이스 이름",
-                ),
-                "kor_name": openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    description="한글 데이터베이스 이름",
+                    description="데이터베이스 이름",
                 ),
                 "description": openapi.Schema(
                     type=openapi.TYPE_STRING,
@@ -156,8 +145,7 @@ class DatabaseDetailView(APIView):
                 examples={
                     "application/json": {
                         "id": 1,
-                        "eng_name": "UpdatedDB",
-                        "kor_name": "업데이트된DB",
+                        "name": "업데이트된DB",
                         "description": "수정된 데이터베이스",
                         "connection_info": "{...}",
                     }

@@ -11,12 +11,13 @@ from MySQLdb.cursors import DictCursor
 class MySQLConnector:
     """MySQL 데이터베이스와 연결하고 메타데이터를 추출하는 클래스입니다."""
 
-    def __init__(self, db: Database):
+    def __init__(self, db: Database = None, connection_info=None):
         """
         Args:
             db: 데이터베이스 객체
         """
         self.db = db
+        self.connection_info = connection_info or self.db.connection_info
         self.conn = None
         self.cursor = None
         self.connect()
@@ -62,7 +63,7 @@ class MySQLConnector:
         data = self.cursor.fetchall()
         if data:
             data = [{k.lower(): v for k, v in row.items()} for row in data]
-            logging.info(f"쿼리 결과: {data}")
+            logging.info(f"쿼리 결과: {len(data)} rows")
         return data
 
     @staticmethod
@@ -97,10 +98,10 @@ class MySQLConnector:
 
     def connect(self):
         """데이터베이스에 접속해 커넥션을 반환"""
-        logging.info(f"DB 접속 시도: {self.db.eng_name} {self.db.connection_info}")
-        if not self.db.connection_info:
-            raise ValueError("Connection info is required to extract metadata.")
-        connection_json = json.loads(self.db.connection_info)
+
+        logging.info(f"DB 접속 시도: {self.connection_info}")
+
+        connection_json = json.loads(self.connection_info)
         try:
             if self.check_connection(connection_json):
                 self.conn = MySQLdb.connect(cursorclass=DictCursor, **connection_json)
@@ -114,17 +115,12 @@ class MySQLConnector:
         """
         주어진 데이터베이스의 메타데이터를 추출합니다.
 
-        Args:
-            database (Database): Database 객체
-
         Returns:
-            dict: {"database": str, "metadata": list}
-                - database: 데이터베이스 이름
-                - metadata: 메타데이터 리스트
+            list: 스키마 메타데이터 리스트
         """
         # 메타데이터 추출 로직을 여기에 추가합니다.
         sql = f"""
-            SELECT DISTINCT table_schema
+            SELECT DISTINCT table_schema as schema_name
             FROM information_schema.tables
             WHERE table_schema NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys');
         """
@@ -132,7 +128,7 @@ class MySQLConnector:
         data = self.query(sql)
         logging.info("메타데이터 추출 완료")
         logging.info(f"추출된 메타데이터: {data}")
-        return [row["table_schema"] for row in data]
+        return data
 
     def get_table_meta(self, schema_list: list = None):
         """
@@ -142,66 +138,19 @@ class MySQLConnector:
             schema_list (list): 스키마 리스트
 
         Returns:
-            dict: {"database": str, "metadata": list}
-                - database: 데이터베이스 이름
-                - metadata: 메타데이터 리스트
+            list: 테이블 메타데이터 리스트
         """
-        # 메타데이터 추출 로직을 여기에 추가합니다.
-        sql = f"""
-            SELECT 
-                table_name AS eng_name,
-                table_name AS kor_name,
-                table_schema AS schema_name,
-                table_comment AS description
-            FROM information_schema.tables
-            WHERE table_schema NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')
-        """
+        where_query = ""
         if schema_list:
             schema_text = ",".join([f"'{schema}'" for schema in schema_list])
-            sql += f" AND table_schema IN ({schema_text})"
-        sql += " ORDER BY table_schema, table_name;"
-        data = self.query(sql)
-        return data
-
-    def get_column_meta(self, table_list: list):
-        """
-        주어진 데이터베이스의 테이블 컬럼 메타데이터를 추출합니다.
-
-        Args:
-            table_list (list[dict]): 테이블 리스트
-                - schema_name: 스키마 이름
-                - eng_name: 테이블 이름
-
-        Returns:
-            dict: {"database": str, "metadata": list}
-                - database: 데이터베이스 이름
-                - metadata: 메타데이터 리스트
-        """
-        # tables 내 'eng_name' 키를 'table_name'으로 변경
-        # 'eng_name' 키가 없으면 'table_name' 사용
-        table_meta = [
-            {"schema_name": table["schema_name"], "table_name": table.get("eng_name", table.get("table_name"))}
-            for table in table_list
-        ]
-        if not table_meta:
-            raise ValueError("No tables provided for metadata extraction.")
-
-        table_dict = defaultdict(dict)
-        for table in table_list:
-            table_dict[table["schema_name"]][table["eng_name"]] = table.get("id")
-
-        # 테이블 메타데이터 추출
-        where_query = ""
-        for table in table_meta:
-            if where_query:
-                where_query += "\nOR "
-            where_query += f"(c.table_schema = '{table["schema_name"]}' AND c.table_name = '{table["table_name"]}')"
+            where_query += f" AND c.table_schema IN ({schema_text})"
+        # 메타데이터 추출 로직을 여기에 추가합니다.
         sql = f"""
             SELECT 
                 c.table_schema AS schema_name,
                 c.table_name AS table_name,
-                c.column_name AS eng_name,
-                c.column_name AS kor_name,
+                t.table_comment AS table_description,
+                c.column_name AS name,
                 c.column_comment AS description,
                 c.column_type AS data_type,
                 c.column_default AS default_value,
@@ -219,13 +168,15 @@ class MySQLConnector:
                 ON c.table_schema = k.TABLE_SCHEMA
                 AND c.table_name = k.TABLE_NAME
                 AND c.column_name = k.COLUMN_NAME
-            WHERE 
+            LEFT JOIN 
+                information_schema.tables t
+                ON c.table_schema = t.TABLE_SCHEMA
+                AND c.table_name = t.TABLE_NAME
+            WHERE 1=1
                 {where_query}
-            ORDER BY c.ordinal_position;
+                AND c.table_schema NOT IN ('mysql', 'information_schema', 'performance_schema', 'sys')
+            ORDER BY c.table_schema, c.table_name, c.ordinal_position;
         """
+
         data = self.query(sql)
-        for column in data:
-            column["table"] = table_dict[column.pop("schema_name")][column.pop("table_name")]
-        logging.info("컬럼 메타데이터 추출 완료")
-        logging.info(f"추출된 컬럼 메타데이터: {data}")
         return data
